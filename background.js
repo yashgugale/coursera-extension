@@ -113,7 +113,7 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
                 courseName: courseName,
                 id: id,
                 quizName: quizName,
-                attempt: tab.url.includes('attempt') ? attempt : 'false'
+                attempt: tab.url.includes('attempt') ? attempt : 'false' // TODO: Fix the attempt to pass quiz attempted vs just viewing the quiz
             }, viewDomData);
 
      
