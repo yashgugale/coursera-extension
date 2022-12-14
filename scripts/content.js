@@ -65,7 +65,7 @@ async function afterDOMLoaded(quizObj) {
 
 
 function setQuestionOverlay(quiz_data) {
-
+    console.log(quiz_data);
     // document.getElementById('TUNNELVISIONWRAPPER_CONTENT_ID').insertAdjacentHTML('afterend', html_to_insert);
     // var questionOverlay = document.getElementsByClassName("card-body text-dark");
     // console.log("questionOverlay: ", questionOverlay);
@@ -73,15 +73,18 @@ function setQuestionOverlay(quiz_data) {
     var questionsHTML = "";
     questions.forEach(function(item) {
         var optionsHTML = "";
-        if(item["correct"] == true) {
+        if(item["correct_solution"]) {
             item["correct_solution"].forEach(function(selectedOption){
                 optionsHTML += `<div class="card-text text-success">${selectedOption}</div>`;
             })
         }
-        else {
+        else if(item["wrong_solution"]) {
             item["wrong_solution"].forEach(function(wrongOption){
                 optionsHTML += `<div class="card-text text-danger"><del>${wrongOption}<del></div>`;
             })
+        }
+        else {
+            return;
         }
         
         html = `
@@ -221,7 +224,7 @@ function addTriggerOnsubmit(obj, loaded_data) {
         console.log("User selection: ", marked_responses);
 
         setTimeout(function() {
-            var result_data = checkSolution(marked_responses)
+            var result_data = checkSolution(marked_responses);
             obj["quiz_result"] = result_data;
             loaded_data.push(obj);
 
@@ -274,9 +277,47 @@ async function runOnLoad(obj) {
 
  (() => {
 
-    // chrome.storage.local.clear(function() {
-    //     console.log("Clearing local data")
-    // });
+    chrome.storage.local.clear(function() {
+        console.log("Clearing local data")
+    });
+
+
+    test_data = [
+        {
+            "attempt": "attempt",
+            "courseName": "3d-printing-revolution",
+            "id": "srTX9",
+            "quizName": "module-1-practice-quiz",
+            "type": "quiz",
+            "quiz_result": [
+                {
+                    "question": "What happened a few years ago\nthat helped a number of new firms enter the 3D printing industry?",
+                    "correct_solution": ["The patents for several types of 3D printing technologies started to expire."]
+                },
+                {
+                    "question": "Which adjective describes what 3D printing’s manufacturing process is like?",
+                    "correct_solution": ["additive"]
+                },
+                {
+                    "question": "Considering the current\ncosts of 3D printers, which of the following\n3D printing technologies is most expensive?",
+                    "wrong_solution": ["FDM"]
+                },
+                {
+                    "question": "At which website can you download design files for free?",
+                    "wrong_solution": ["Fusion", "Thingiverse"]
+                },
+                {
+                    "question": "Considering the current\ncosts of 3D printers, which of the following\n3D printing technologies is most expensive?",
+                    "wrong_solution": []
+                }
+            ]
+        }
+    ]
+
+    // Save the tet data:
+    chrome.storage.local.set({ 'quiz_data': test_data }).then(() => {
+        console.log("Saving test data!");
+    });
 
     chrome.runtime.onMessage.addListener(async (obj, sender, response) => {
 
