@@ -167,6 +167,13 @@ function setQuestionOverlay(quiz_data) {
             setQuestionOverlay(quiz_return);
         }
         
+        var submit_button = document.querySelector('[data-test="submit-button"]');
+        console.log("Submit: ", submit_button);
+        submit_button.addEventListener("click", function(){
+            console.log("Submit button clicked!")
+        })
+
+
     });
 })();
 
