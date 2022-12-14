@@ -1,14 +1,11 @@
 // console.log("This a log from content.js!")
 
 function getLeaf(element) {
-    // console.log("In leaf: ", element);
     if (element.hasChildNodes()) {
         leafValue = getLeaf(element.childNodes[0])
         return leafValue;
     }
     else {
-        // console.log("Leaf element: ", element);
-        // console.log("Leaf: ", element.nodeValue);
         return element.nodeValue.trim();
     }
 }
@@ -27,22 +24,16 @@ function getOptions(element) {
 
 function saveAllQuestions() {
     const nodes = document.getElementsByClassName("rc-FormPartsQuestion__row");
-    // console.log("Nodes: ", nodes)
-    // console.log("typeof(Nodes): ", typeof(nodes));
-    // console.log("Length: ", nodes.length);
     var questions = [];
     for (var i = 0; i < nodes.length-1; i += 2) {
 
         var question = getLeaf(nodes.item(i).querySelector(".rc-FormPartsQuestion__contentCell"));
-        // console.log(`Question ${(i+2)/2}: `, question);
         var options = getOptions(nodes.item(i+1).querySelector(".rc-FormPartsQuestion__contentCell"));
-        // console.log("Options: ", options.toString());
         questions.push({
             "question": question,
             "options": options
         });
     }
-    // console.log("2: Questions: ", questions)
     return questions;
 }
 
@@ -57,7 +48,6 @@ function getQuizDataAsync() {
 }
 
 
-
 async function afterDOMLoaded(quizObj) {
 
     questions = await getQuizDataAsync()
@@ -67,17 +57,9 @@ async function afterDOMLoaded(quizObj) {
     .catch(function() {
         console.log("Failure to fulfil promise!");
     })
-    // console.log("questions: ", questions)
     quizObj["questions"] = questions;
-    console.log("1: ", quizObj);
-    quizData = {
-        "id": quizObj["id"],
-        "quiz": quizObj
-    }
-    chrome.storage.local.set({ 'quiz_data': quizData }).then(() => {
-        console.log("Quiz value stored locally!: " + quizData);
-        console.log("typeof!: " + typeof(quizData));
-    })
+    return quizObj;
+
 
     // return quizObj;
 
@@ -94,40 +76,61 @@ async function afterDOMLoaded(quizObj) {
 // TODO: Function to load data:
 // TODO: Function to write data:
 
-(() => {
 
-    chrome.runtime.onMessage.addListener((obj, sender, response) => {
-        const { type, courseName, id, quizName, attempt } = obj;
-        
-        // console.log("type: ", type);
-        // console.log("courseName: ", courseName);
-        // console.log("id: ", id);
-        // console.log("quizName: ", quizName);
-        // console.log("attempt: ", attempt);
+function setQuestionOverlay(quiz_data) {
+    console.log("Quiz data in overlay call: ", quiz_data);
+    html_to_insert = '<div id="newdata"><h1>Question overlay</h1></div>';
+    document.getElementById('TUNNELVISIONWRAPPER_CONTENT_ID').insertAdjacentHTML('afterbegin', html_to_insert);
+    // .innerHTML += ' \
+    // <div id="newdata"><h1>Question overlay</h1></div> \
+    // ';
 
-        chrome.storage.local.get(null, function(items) {
-            var allKeys = Object.keys(items);
-            console.log("all: ", allKeys);
-         });
+}
 
-        quizData = {};
+ (() => {
+
+    // chrome.storage.local.clear(function() {
+    //     console.log("Clearing local data")
+    // });
+
+    chrome.runtime.onMessage.addListener(async (obj, sender, response) => {
+        const { tabId, type, courseName, id, quizName, attempt } = obj;
+        console.log("tab id", tabId)
+        // chrome.storage.local.get(null, function(items) {
+        //     var allKeys = Object.keys(items);
+        //     console.log("all: ", allKeys);
+        //  });
+
+        // Load data from the local store:
+        var loaded_data = [];
         chrome.storage.local.get('quiz_data').then((result) => {
             if (Object.keys(result).length === 0){
-                console.log("Empty data")
+                console.log("Empty data");
             }
             else {
-                quizData = result.key;
-                console.log("result: ", result);
-                console.log("Data loaded locally: ", result.key);
+                loaded_data = result["quiz_data"];
+                console.log("loaded_data: ", loaded_data);
             }
-
         })
 
         if (document.readyState === "loading") {
             document.addEventListener('DOMContentLoaded', afterDOMLoaded);
         } else {
-            afterDOMLoaded(obj);
+            // Load the questions:
+            quiz_return = await afterDOMLoaded(obj);
+            if(loaded_data.some(e => e.id === obj.id)){
+                console.log("Already in array")
+            }
+            else {
+                loaded_data.push(quiz_return);
+            }
+            console.log("QuizReturn: ", quiz_return)
+            chrome.storage.local.set({ 'quiz_data': loaded_data }).then(() => {
+                console.log("");
+            });
 
+            // Execute the overlay script:
+            setQuestionOverlay(quiz_return);
         }
         
     });

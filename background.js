@@ -109,6 +109,7 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
             // console.log("quizName: ", quizName);
             
             chrome.tabs.sendMessage(tabId, {
+                tabId: tabId,
                 type: type,
                 courseName: courseName,
                 id: id,
