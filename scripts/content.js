@@ -24,6 +24,8 @@ function getOptions(element) {
 
 function saveAllQuestions() {
     const nodes = document.getElementsByClassName("rc-FormPartsQuestion__row");
+    console.log("Nodes: ", nodes)
+    console.log("Length: ", nodes.length)
     var questions = [];
     for (var i = 0; i < nodes.length-1; i += 2) {
 
@@ -59,53 +61,43 @@ async function afterDOMLoaded(quizObj) {
     })
     quizObj["questions"] = questions;
     return quizObj;
-
-
-    // return quizObj;
-
-    // setTimeout(saveAllQuestions(), 10000)
-    //     .then(questions => quizObj["questions"] = questions)
-    //     .then(quizData => {
-    //         console.log("1: ", quizData);
-    //     })
-    //     .catch(function() {
-    //         console.log("Failure to fulfil promise!");
-    //     })
 }
-
-// TODO: Function to load data:
-// TODO: Function to write data:
 
 
 function setQuestionOverlay(quiz_data) {
-    console.log("Quiz data in overlay call: ", quiz_data);
 
     // document.getElementById('TUNNELVISIONWRAPPER_CONTENT_ID').insertAdjacentHTML('afterend', html_to_insert);
     // var questionOverlay = document.getElementsByClassName("card-body text-dark");
     // console.log("questionOverlay: ", questionOverlay);
-    var questions = quiz_data["questions"];
+    var questions = quiz_data["quiz_result"];
     var questionsHTML = "";
     questions.forEach(function(item) {
         var optionsHTML = "";
-        var options = item["options"];
-        options.forEach(function(option){
-            optionsHTML += `<li class="card-text">${option}</li>`;
-        })
+        if(item["correct"] == true) {
+            item["correct_solution"].forEach(function(selectedOption){
+                optionsHTML += `<div class="card-text text-success">${selectedOption}</div>`;
+            })
+        }
+        else {
+            item["wrong_solution"].forEach(function(wrongOption){
+                optionsHTML += `<div class="card-text text-danger"><del>${wrongOption}<del></div>`;
+            })
+        }
+        
         html = `
         <div class="card border-dark mb-3">
             <div class="card-header">${item["question"]}</div>
             <div class="card-body text-dark">
                 <h5 class="card-title">
-                    <ul>
+                    <div>
                         ${optionsHTML}
-                    </ul>         
+                    </div>         
                 </h5>
             </div>
         </div>
         `
         questionsHTML += html;
     })
-    console.log(questionsHTML);
     html_to_insert = `
     <div id="cp-questions" class="container-fluid">
         <div class="flex-row-reverse">
@@ -121,6 +113,165 @@ function setQuestionOverlay(quiz_data) {
 
 }
 
+// function checkUserSolution(optionsNode) {
+//     var node = optionsNode.childNodes[0];
+//     var selected_options = [];
+//     var children = node.childNodes;
+//     children.forEach(function(node){
+//         if (node.querySelector(".cui-isChecked")) {
+//             option = getLeaf(node.querySelector(".rc-Option__input-text"))
+//             selected_options.push({
+//                 "value": option,
+//                 "selected": true
+//             })
+//         }
+//         else {
+//             option = getLeaf(node.querySelector(".rc-Option__input-text"))
+//             selected_options.push({
+//                 "value": option,
+//                 "selected": false
+//             })
+//         }
+//     });
+
+//     return selected_options;
+// }
+
+function checkUserSolution(optionsNode) {
+    var node = optionsNode.childNodes[0];
+    var selected_options = [];
+    var children = node.childNodes;
+    children.forEach(function(node){
+        if (node.querySelector(".cui-isChecked")) {
+            option = getLeaf(node.querySelector(".rc-Option__input-text"))
+            selected_options.push(option)
+        }
+    });
+
+    return selected_options;
+}
+
+function getResponses() {
+    console.log("In user responses!")
+    const nodes = document.getElementsByClassName("rc-FormPartsQuestion__row");
+    var responses = [];
+    for (var i = 0; i < nodes.length-1; i += 2) {
+        var questionNode = nodes.item(i).querySelector(".rc-FormPartsQuestion__contentCell")
+        var optionsNode = nodes.item(i+1).querySelector(".rc-FormPartsQuestion__contentCell")
+        var question = getLeaf(questionNode);
+        var answered = checkUserSolution(optionsNode);
+
+        responses.push({
+            "question": question,
+            "selected": answered
+        });
+
+    }
+    return responses;
+}
+
+function checkSuccess(optionsNode) {
+
+    if (optionsNode.querySelector('[data-testid="GradeFeedback-success"]')) {
+        // var feedback_node = optionsNode.querySelector('[data-testid="GradeFeedback-info"]')
+        // var feedback_data = 
+        // console.log(feedback_node)
+        // var feedback = getLeaf(feedback_node.children[1]);
+        // console.log("Feedback: ", feedback)
+
+        return true;
+    }
+    return false;
+}
+
+function checkSolution(result_data) {
+
+    const nodes = document.getElementsByClassName("rc-FormPartsQuestion__row");
+    for (var i = 0; i < nodes.length-1; i += 2) {
+        var questionNode = nodes.item(i).querySelector(".rc-FormPartsQuestion__contentCell")
+        var optionsNode = nodes.item(i+1).querySelector(".rc-FormPartsQuestion__contentCell")
+        var question = getLeaf(questionNode);
+        result_data.forEach(function(data, index) {
+            var res_question = data["question"];
+            var res_selected = data["selected"];
+            if (res_selected.length > 0) {
+                if (res_question === question) {
+                    var success = checkSuccess(optionsNode);
+                    if (success) {
+                        result_data[index]["correct"] = true
+                        result_data[index]["correct_solution"] = res_selected;
+                    }
+                    else {
+                        result_data[index]["correct"] = false
+                        result_data[index]["wrong_solution"] = res_selected;
+                    }
+                }
+            }
+            
+        })
+    }
+    console.log("result data on checking solution: ", result_data);
+    return result_data;
+}
+
+function addTriggerOnsubmit(obj, loaded_data) {
+    var submit_button = document.querySelector('[data-test="submit-button"]');
+    submit_button.addEventListener("click", function(){
+        var marked_responses = getResponses();
+        console.log("User selection: ", marked_responses);
+
+        setTimeout(function() {
+            var result_data = checkSolution(marked_responses)
+            obj["quiz_result"] = result_data;
+            loaded_data.push(obj);
+
+            // Save the data:
+            chrome.storage.local.set({ 'quiz_data': loaded_data }).then(() => {
+                console.log("Saving data!");
+            });
+        }, 2000);
+    })
+}
+
+
+async function runOnLoad(obj) {
+
+    const { tabId, type, courseName, id, quizName, attempt } = obj;
+    delete obj["tabId"]
+
+    // Load the quiz data from memory and show on the screen:
+    var loaded_data = [];
+    chrome.storage.local.get('quiz_data').then((result) => {
+        if (Object.keys(result).length === 0){
+            console.log("Empty data");
+        }
+        else {
+            loaded_data = result["quiz_data"];
+            console.log("Loaded: ", loaded_data);
+            loaded_data.forEach(function(quiz) {
+                if (quiz.id === obj.id) {
+                    setQuestionOverlay(quiz);
+                }
+            })
+        }
+    });
+
+
+    // Add trigger on the submit button:
+    // var result_data = await addTriggerOnsubmit();
+    // quiz_info = obj["quiz_result"] = result_data;
+    // loaded_data.push(quiz_info);
+
+    // // Save the data:
+    // chrome.storage.local.set({ 'quiz_data': loaded_data }).then(() => {
+    //     console.log("Saving data!");
+    // });
+
+    var result_data = await addTriggerOnsubmit(obj, loaded_data);
+
+
+}
+
  (() => {
 
     // chrome.storage.local.clear(function() {
@@ -128,50 +279,56 @@ function setQuestionOverlay(quiz_data) {
     // });
 
     chrome.runtime.onMessage.addListener(async (obj, sender, response) => {
-        const { tabId, type, courseName, id, quizName, attempt } = obj;
-        console.log("tab id", tabId)
+
+        setTimeout(function() {
+            runOnLoad(obj)
+        }, 10000);
+
         // chrome.storage.local.get(null, function(items) {
         //     var allKeys = Object.keys(items);
         //     console.log("all: ", allKeys);
         //  });
 
-        // Load data from the local store:
-        var loaded_data = [];
-        chrome.storage.local.get('quiz_data').then((result) => {
-            if (Object.keys(result).length === 0){
-                console.log("Empty data");
-            }
-            else {
-                loaded_data = result["quiz_data"];
-                console.log("loaded_data: ", loaded_data);
-            }
-        })
 
-        if (document.readyState === "loading") {
-            document.addEventListener('DOMContentLoaded', afterDOMLoaded);
-        } else {
-            // Load the questions:
-            quiz_return = await afterDOMLoaded(obj);
-            if(loaded_data.some(e => e.id === obj.id)){
-                console.log("Already in array")
-            }
-            else {
-                loaded_data.push(quiz_return);
-            }
-            console.log("QuizReturn: ", quiz_return)
-            chrome.storage.local.set({ 'quiz_data': loaded_data }).then(() => {
-                console.log("");
-            });
 
-            // Execute the overlay script:
-            setQuestionOverlay(quiz_return);
-        }
+
+
+        // if (document.readyState === "loading") {
+        //     document.addEventListener('DOMContentLoaded', addTriggerOnsubmit);
+        // } else {
+        //     await addTriggerOnsubmit();
+        //     console.log("DOM is still being loaded!")
+        // }        
+
+        // var submit_button = document.querySelector('[data-test="submit-button"]');
+        // console.log("Submit: ", submit_button);
+        // submit_button.addEventListener("click", function(){
+        //     console.log("Submit button clicked!")
+        //     console.log("TODO: Load the options the user had selected for each question and save it")
+        //     console.log("TODO: After submit finishes, check for correct answers")
+        // })
+
+        // if (document.readyState === "loading") {
+        //     document.addEventListener('DOMContentLoaded', afterDOMLoaded);
+        // } else {
+        //     // Load the questions:
+        //     quiz_return = await afterDOMLoaded(obj);
+        //     if(loaded_data.some(e => e.id === obj.id)){
+        //         console.log("Already in array")
+        //     }
+        //     else {
+        //         loaded_data.push(quiz_return);
+        //     }
+        //     console.log("QuizReturn: ", quiz_return)
+        //     chrome.storage.local.set({ 'quiz_data': loaded_data }).then(() => {
+        //         console.log("");
+        //     });
+
+        //     // // Execute the overlay script:
+        //     // setQuestionOverlay(quiz_return);
+        // }
         
-        var submit_button = document.querySelector('[data-test="submit-button"]');
-        console.log("Submit: ", submit_button);
-        submit_button.addEventListener("click", function(){
-            console.log("Submit button clicked!")
-        })
+
 
 
     });
