@@ -28,6 +28,13 @@
     "commands": {},
     "content_scripts": [
         {
+            "js": ["bootstrap/bootstrap.bundle.min.js"],
+            "css": ["css/questions.css", "bootstrap/bootstrap.min.css"],
+            "matches": [
+                "https://www.coursera.org/*"
+            ]
+        },
+        {
             "js": ["scripts/content.js"],
             "matches": [
                 "https://www.coursera.org/*"

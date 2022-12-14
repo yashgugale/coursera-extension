@@ -79,11 +79,45 @@ async function afterDOMLoaded(quizObj) {
 
 function setQuestionOverlay(quiz_data) {
     console.log("Quiz data in overlay call: ", quiz_data);
-    html_to_insert = '<div id="newdata"><h1>Question overlay</h1></div>';
-    document.getElementById('TUNNELVISIONWRAPPER_CONTENT_ID').insertAdjacentHTML('afterbegin', html_to_insert);
-    // .innerHTML += ' \
-    // <div id="newdata"><h1>Question overlay</h1></div> \
-    // ';
+
+    // document.getElementById('TUNNELVISIONWRAPPER_CONTENT_ID').insertAdjacentHTML('afterend', html_to_insert);
+    // var questionOverlay = document.getElementsByClassName("card-body text-dark");
+    // console.log("questionOverlay: ", questionOverlay);
+    var questions = quiz_data["questions"];
+    var questionsHTML = "";
+    questions.forEach(function(item) {
+        var optionsHTML = "";
+        var options = item["options"];
+        options.forEach(function(option){
+            optionsHTML += `<li class="card-text">${option}</li>`;
+        })
+        html = `
+        <div class="card border-dark mb-3">
+            <div class="card-header">${item["question"]}</div>
+            <div class="card-body text-dark">
+                <h5 class="card-title">
+                    <ul>
+                        ${optionsHTML}
+                    </ul>         
+                </h5>
+            </div>
+        </div>
+        `
+        questionsHTML += html;
+    })
+    console.log(questionsHTML);
+    html_to_insert = `
+    <div id="cp-questions" class="container-fluid">
+        <div class="flex-row-reverse">
+            <div class="card-body text-dark">
+            ${questionsHTML}
+            </div>
+        </div>
+    </div>
+    `;
+    document.getElementById('TUNNELVISIONWRAPPER_CONTENT_ID').insertAdjacentHTML('afterend', html_to_insert);
+    // questionOverlay.innerHTML = questionsHTML;
+    
 
 }
 
