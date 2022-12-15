@@ -218,37 +218,85 @@ function checkSolution(result_data) {
 
 function updateSolution(obj, loaded_data, marked_responses){
     
+    // const { type, courseName, id, quizName, attempt } = obj;
+
     var [correct_options, wrong_options] = checkSolution(marked_responses);
     console.log("Correct: ", correct_options)
     console.log("Wrong: ", wrong_options)
     
     console.log("loaded data (a): ", loaded_data);
     console.log("obj (a): ", obj);
-    loaded_data.forEach(function(quiz, quiz_index) {
-        console.log("In loaded data")
-        if (quiz.id === obj.id) {
-            console.log("id matches")
-            var previous_correct = quiz["correct_answers"]
-            var previous_wrong = quiz["wrong_answers"]
-            console.log("Previous wrong (before): ", previous_wrong);
-            console.log("Previous correct (before): ", previous_correct);
-            correct_options.forEach(function(value) {
-                if(!previous_correct.includes(value)) {
-                    console.log("new correct add: ", value);
-                    previous_correct.push(value);
-                }
-            })
 
-            wrong_options.forEach(function(value) {
-                if(!previous_wrong.includes(value)) {
-                    console.log("new wrong add: ", value);
-                    previous_wrong.push(value);
-                }
-            })
-            console.log("Previous wrong: ", previous_wrong);
-            console.log("Previous correct: ", previous_correct);
-            loaded_data[quiz_index]["correct_answers"] = previous_correct;
-            loaded_data[quiz_index]["wrong_answers"] = previous_wrong;
+    var previous_correct = [];
+    var previous_wrong = [];
+    var quiz_index = 0;
+
+    if(loaded_data) {
+        loaded_data.forEach(function(quiz, index) {
+            console.log("In loaded data")
+            if (quiz.id === obj.id) {
+                previous_correct = quiz["correct_answers"]
+                previous_wrong = quiz["wrong_answers"]
+                quiz_index = index
+            }
+        });
+    }
+
+    correct_options.forEach(function(value) {
+        if(!previous_correct.includes(value)) {
+            console.log("new correct add: ", value);
+            previous_correct.push(value);
+        }
+    })
+
+    wrong_options.forEach(function(value) {
+        if(!previous_wrong.includes(value)) {
+            console.log("new wrong add: ", value);
+            previous_wrong.push(value);
+        }
+    })
+    console.log("Previous wrong: ", previous_wrong);
+    console.log("Previous correct: ", previous_correct);
+    obj["correct_answers"] = previous_correct;
+    obj["wrong_answers"] = previous_wrong;
+    loaded_data[quiz_index] = obj;
+
+    // loaded_data[quiz_index]["correct_answers"] = previous_correct;
+    // loaded_data[quiz_index]["wrong_answers"] = previous_wrong;
+
+    console.log("New data: ", loaded_data);
+
+    // Save the data:
+    chrome.storage.local.set({ 'quiz_data': loaded_data }).then(() => {
+        console.log("Saving data!");
+    });
+
+
+    // loaded_data.forEach(function(quiz, quiz_index) {
+    //     console.log("In loaded data")
+    //     if (quiz.id === obj.id) {
+    //         console.log("id matches")
+    //         var previous_correct = quiz["correct_answers"]
+    //         var previous_wrong = quiz["wrong_answers"]
+    //         console.log("Previous wrong (before): ", previous_wrong);
+    //         console.log("Previous correct (before): ", previous_correct);
+    //         correct_options.forEach(function(value) {
+    //             if(!previous_correct.includes(value)) {
+    //                 console.log("new correct add: ", value);
+    //                 previous_correct.push(value);
+    //             }
+    //         })
+
+    //         wrong_options.forEach(function(value) {
+    //             if(!previous_wrong.includes(value)) {
+    //                 console.log("new wrong add: ", value);
+    //                 previous_wrong.push(value);
+    //             }
+    //         })
+    //         console.log("Previous wrong: ", previous_wrong);
+    //         console.log("Previous correct: ", previous_correct);
+    //         loaded_data[quiz_index]["correct_answers"] = previous_correct;
+    //         loaded_data[quiz_index]["wrong_answers"] = previous_wrong;
 
 
 //             // result_data.forEach(function(result) {
@@ -270,15 +318,15 @@ function updateSolution(obj, loaded_data, marked_responses){
 //             // })
 
             // loaded_data.push(obj);
-            console.log("New data: ", loaded_data);
+            // console.log("New data: ", loaded_data);
 
-            // Save the data:
-            chrome.storage.local.set({ 'quiz_data': loaded_data }).then(() => {
-                console.log("Saving data!");
-            });
+            // // Save the data:
+            // chrome.storage.local.set({ 'quiz_data': loaded_data }).then(() => {
+            //     console.log("Saving data!");
+            // });
 
-        }
-    })
+    //     }
+    // })
 }
 
 function addTriggerOnsubmit(obj, loaded_data) {
