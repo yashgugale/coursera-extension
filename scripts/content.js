@@ -78,7 +78,7 @@ function setQuestionOverlay(quiz_data) {
                 optionsHTML += `<div class="card-text text-success">${selectedOption}</div>`;
             })
         }
-        else if(item["wrong_solution"]) {
+        else if(item["wrong_solution"] !== undefined && item["wrong_solution"].length > 0) {
             item["wrong_solution"].forEach(function(wrongOption){
                 optionsHTML += `<div class="card-text text-danger"><del>${wrongOption}<del></div>`;
             })
@@ -155,7 +155,7 @@ function checkUserSolution(optionsNode) {
 }
 
 function getResponses() {
-    console.log("In user responses!")
+
     const nodes = document.getElementsByClassName("rc-FormPartsQuestion__row");
     var responses = [];
     for (var i = 0; i < nodes.length-1; i += 2) {
@@ -176,12 +176,6 @@ function getResponses() {
 function checkSuccess(optionsNode) {
 
     if (optionsNode.querySelector('[data-testid="GradeFeedback-success"]')) {
-        // var feedback_node = optionsNode.querySelector('[data-testid="GradeFeedback-info"]')
-        // var feedback_data = 
-        // console.log(feedback_node)
-        // var feedback = getLeaf(feedback_node.children[1]);
-        // console.log("Feedback: ", feedback)
-
         return true;
     }
     return false;
@@ -189,6 +183,10 @@ function checkSuccess(optionsNode) {
 
 function checkSolution(result_data) {
 
+    var correct_options = []
+    var wrong_options = []
+
+    // TODO: Clean this up:
     const nodes = document.getElementsByClassName("rc-FormPartsQuestion__row");
     for (var i = 0; i < nodes.length-1; i += 2) {
         var questionNode = nodes.item(i).querySelector(".rc-FormPartsQuestion__contentCell")
@@ -201,41 +199,161 @@ function checkSolution(result_data) {
                 if (res_question === question) {
                     var success = checkSuccess(optionsNode);
                     if (success) {
-                        result_data[index]["correct"] = true
-                        result_data[index]["correct_solution"] = res_selected;
+                        // correct_options.push(res_selected);
+                        correct_options = correct_options.concat(res_selected);
                     }
                     else {
-                        result_data[index]["correct"] = false
-                        result_data[index]["wrong_solution"] = res_selected;
+                        // wrong_options.push(res_selected);
+                        wrong_options = wrong_options.concat(res_selected);
                     }
                 }
             }
             
         })
     }
-    console.log("result data on checking solution: ", result_data);
-    return result_data;
+
+    return [correct_options, wrong_options];
 }
 
-function addTriggerOnsubmit(obj, loaded_data) {
-    var submit_button = document.querySelector('[data-test="submit-button"]');
-    submit_button.addEventListener("click", function(){
-        var marked_responses = getResponses();
-        console.log("User selection: ", marked_responses);
 
-        setTimeout(function() {
-            var result_data = checkSolution(marked_responses);
-            obj["quiz_result"] = result_data;
-            loaded_data.push(obj);
+function updateSolution(obj, loaded_data, marked_responses){
+    
+    var [correct_options, wrong_options] = checkSolution(marked_responses);
+    console.log("Correct: ", correct_options)
+    console.log("Wrong: ", wrong_options)
+    
+    console.log("loaded data (a): ", loaded_data);
+    console.log("obj (a): ", obj);
+    loaded_data.forEach(function(quiz, quiz_index) {
+        console.log("In loaded data")
+        if (quiz.id === obj.id) {
+            console.log("id matches")
+            var previous_correct = quiz["correct_answers"]
+            var previous_wrong = quiz["wrong_answers"]
+            console.log("Previous wrong (before): ", previous_wrong);
+            console.log("Previous correct (before): ", previous_correct);
+            correct_options.forEach(function(value) {
+                if(!previous_correct.includes(value)) {
+                    console.log("new correct add: ", value);
+                    previous_correct.push(value);
+                }
+            })
+
+            wrong_options.forEach(function(value) {
+                if(!previous_wrong.includes(value)) {
+                    console.log("new wrong add: ", value);
+                    previous_wrong.push(value);
+                }
+            })
+            console.log("Previous wrong: ", previous_wrong);
+            console.log("Previous correct: ", previous_correct);
+            loaded_data[quiz_index]["correct_answers"] = previous_correct;
+            loaded_data[quiz_index]["wrong_answers"] = previous_wrong;
+
+
+//             // result_data.forEach(function(result) {
+//             //     var res_ques = result["question"]
+//             //     var quiz_ques = quiz["question"]
+//             //     if (res_ques === quiz_ques) {
+//             //         if (quiz["correct_solution"] !== undefined && quiz["correct_solution"].length > 0) {
+
+//             //         }
+//             //         else if(result["wrong_solution"] !== undefined && result["wrong_solution"].length > 0) {
+//             //             result["wrong_solution"].forEach(function(value) {
+//             //                 if (!quiz["wrong_solution"].includes(value)) {
+//             //                     quiz["wrong_solution"].push(value);
+//             //                   }                                      
+//             //             })
+//             //             result_data[quiz_index] = quiz;
+//             //         }
+//             //     }
+//             // })
+
+            // loaded_data.push(obj);
+            console.log("New data: ", loaded_data);
 
             // Save the data:
             chrome.storage.local.set({ 'quiz_data': loaded_data }).then(() => {
                 console.log("Saving data!");
             });
-        }, 2000);
+
+        }
     })
 }
 
+function addTriggerOnsubmit(obj, loaded_data) {
+
+    console.log("loaded data (b): ", loaded_data);
+    console.log("obj (b): ", obj);
+    var submit_button = document.querySelector('[data-test="submit-button"]');
+    if(submit_button){
+        submit_button.addEventListener("click", function(){
+            var marked_responses = getResponses();
+            console.log("User selection: ", marked_responses);
+
+            // TODO: Fix everything in here:
+            setTimeout(function() {
+                updateSolution(obj, loaded_data, marked_responses);
+            }, 2000);
+        })
+
+    }
+
+}
+
+function getLeafNode(element) {
+    if (element.hasChildNodes()) {
+        var [element, leafValue] = getLeafNode(element.childNodes[0])
+        return [element, leafValue];
+    }
+    else {
+        return [element.parentNode, element.nodeValue.trim()];
+    }
+}
+
+function getNodeText(element) {
+    var options = [];
+    var textNodes = [];
+    var node = element.childNodes[0];
+
+    var children = node.childNodes;
+    children.forEach(function(node){
+        var [textNode, text] = getLeafNode(node.querySelector(".rc-Option__input-text"));
+        options.push(text);
+        textNodes.push(textNode)
+    });
+    return [options, textNodes];
+}
+
+function setSuccessText(node) {
+    node.classList.add("text-success")
+}
+
+function setFailureText(node) {
+    node.classList.add("text-danger")
+}
+
+
+function setTextBackground(quiz_data) {
+
+    // TODO: Put in try catch block if value returned is empty:
+    var correct_solution = quiz_data["correct_answers"];
+    var wrong_solution = quiz_data["wrong_answers"];
+    const nodes = document.getElementsByClassName("rc-FormPartsQuestion__row");
+
+    for (let i = 0; i < nodes.length-1; i += 2) {
+        // var question = getLeaf(nodes.item(i).querySelector(".rc-FormPartsQuestion__contentCell"));
+        var [options, textNodes] = getNodeText(nodes.item(i+1).querySelector(".rc-FormPartsQuestion__contentCell"));
+        for (let j = 0; j < options.length; j++) {
+            if (correct_solution.includes(options[j])){
+                setSuccessText(textNodes[j]);
+            }
+            else if(wrong_solution.includes(options[j])) {
+                setFailureText(textNodes[j]);
+            }
+        }
+    }
+}
 
 async function runOnLoad(obj) {
 
@@ -250,13 +368,19 @@ async function runOnLoad(obj) {
         }
         else {
             loaded_data = result["quiz_data"];
-            console.log("Loaded: ", loaded_data);
+            console.log("Loaded data read: ", loaded_data);
+            // console.log("Loaded: ", loaded_data);
             loaded_data.forEach(function(quiz) {
                 if (quiz.id === obj.id) {
-                    setQuestionOverlay(quiz);
+                    // setQuestionOverlay(quiz);
+                    setTextBackground(quiz);
                 }
             })
         }
+        console.log("Loaded data to trigger: ", loaded_data);
+        // var result_data = await addTriggerOnsubmit(obj, loaded_data);
+        addTriggerOnsubmit(obj, loaded_data);
+        
     });
 
 
@@ -269,61 +393,75 @@ async function runOnLoad(obj) {
     // chrome.storage.local.set({ 'quiz_data': loaded_data }).then(() => {
     //     console.log("Saving data!");
     // });
-
-    var result_data = await addTriggerOnsubmit(obj, loaded_data);
+    // console.log("Loaded data to trigger: ", loaded_data);
+    // var result_data = await addTriggerOnsubmit(obj, loaded_data);
 
 
 }
 
  (() => {
 
-    chrome.storage.local.clear(function() {
-        console.log("Clearing local data")
-    });
+    // chrome.storage.local.clear(function() {
+    //     console.log("Clearing local data")
+    // });
 
 
-    test_data = [
-        {
-            "attempt": "attempt",
-            "courseName": "3d-printing-revolution",
-            "id": "srTX9",
-            "quizName": "module-1-practice-quiz",
-            "type": "quiz",
-            "quiz_result": [
-                {
-                    "question": "What happened a few years ago\nthat helped a number of new firms enter the 3D printing industry?",
-                    "correct_solution": ["The patents for several types of 3D printing technologies started to expire."]
-                },
-                {
-                    "question": "Which adjective describes what 3D printing’s manufacturing process is like?",
-                    "correct_solution": ["additive"]
-                },
-                {
-                    "question": "Considering the current\ncosts of 3D printers, which of the following\n3D printing technologies is most expensive?",
-                    "wrong_solution": ["FDM"]
-                },
-                {
-                    "question": "At which website can you download design files for free?",
-                    "wrong_solution": ["Fusion", "Thingiverse"]
-                },
-                {
-                    "question": "Considering the current\ncosts of 3D printers, which of the following\n3D printing technologies is most expensive?",
-                    "wrong_solution": []
-                }
-            ]
-        }
-    ]
+    // test_data = [
+    //     {
+    //         "attempt": "attempt",
+    //         "courseName": "3d-printing-revolution",
+    //         "id": "srTX9",
+    //         "quizName": "module-1-practice-quiz",
+    //         "type": "quiz",
+    //         "correct_answers": [
+    //             "The patents for several types of 3D printing technologies started to expire.",
+    //             "additive"
+    //         ],
+    //         "wrong_answers": [
+    //             "FDM",
+    //             "Fusion"
+    //         ],
+    //         "quiz_result": [
+    //             {
+    //                 "question": "What happened a few years ago\nthat helped a number of new firms enter the 3D printing industry?",
+    //                 "correct_solution": ["The patents for several types of 3D printing technologies started to expire."]
+    //             },
+    //             {
+    //                 "question": "Which adjective describes what 3D printing’s manufacturing process is like?",
+    //                 "correct_solution": ["additive"]
+    //             },
+    //             {
+    //                 "question": "Considering the current\ncosts of 3D printers, which of the following\n3D printing technologies is most expensive?",
+    //                 "wrong_solution": ["FDM"]
+    //             },
+    //             {
+    //                 "question": "At which website can you download design files for free?",
+    //                 "wrong_solution": ["Fusion", "Thingiverse"]
+    //             },
+    //             {
+    //                 "question": "Considering the current\ncosts of 3D printers, which of the following\n3D printing technologies is most expensive?",
+    //                 "wrong_solution": []
+    //             }
+    //         ]
+    //     }
+    // ]
 
-    // Save the tet data:
-    chrome.storage.local.set({ 'quiz_data': test_data }).then(() => {
-        console.log("Saving test data!");
-    });
+    // // Save the tet data:
+    // chrome.storage.local.set({ 'quiz_data': test_data }).then(() => {
+    //     console.log("Saving test data!");
+    // });
 
     chrome.runtime.onMessage.addListener(async (obj, sender, response) => {
 
-        setTimeout(function() {
-            runOnLoad(obj)
-        }, 10000);
+        let runOnce = false;
+
+        if(!runOnce){
+            setTimeout(function() {
+                runOnLoad(obj)
+            }, 10000);
+            runOnce = true;
+        }
+        
 
         // chrome.storage.local.get(null, function(items) {
         //     var allKeys = Object.keys(items);
