@@ -19,3 +19,6 @@ jobs:
         
       - name: Print release to Github
         run: echo "Release"
+
+      - name: List the files to see if zip folder is created
+        run: ls -a 
