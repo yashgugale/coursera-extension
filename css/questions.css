@@ -1,0 +1,10 @@
+.container-fluid {
+    overflow: scroll;
+    width: 50%;
+}
+
+.card {
+    padding: 0px 5px !important;
+    margin: 5px !important;
+    width: 100% !important;
+}

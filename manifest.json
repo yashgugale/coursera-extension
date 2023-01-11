@@ -1,0 +1,45 @@
+{
+    "manifest_version": 3,
+    "name": "Coursera Enhanced",
+    "description": "Enhance Coursera learning experience through various features like quiz saving, text summarization, etc.",
+    "version": "0.0.0.1",
+
+    "action": {
+        "default_popup": "popup/popup.html",
+        "default_icon": {
+            "16": "images/coursera-16.png",
+            "32": "images/coursera-32.png",
+            "48": "images/coursera-48.png",
+            "128": "images/coursera-128.png"
+        }
+    },
+    "icons": {
+        "16": "images/coursera-16.png",
+        "32": "images/coursera-32.png",
+        "48": "images/coursera-48.png",
+        "128": "images/coursera-128.png"
+    },
+
+    "author": "Yash Gugale",
+    "background": {
+        "service_worker": "background.js"
+    },
+    "commands": {},
+    "content_scripts": [
+        {
+            "js": ["bootstrap/bootstrap.bundle.min.js"],
+            "css": ["css/questions.css", "bootstrap/bootstrap.min.css"],
+            "matches": [
+                "https://www.coursera.org/*"
+            ]
+        },
+        {
+            "js": ["scripts/content.js"],
+            "matches": [
+                "https://www.coursera.org/*"
+            ]
+        }
+    ],
+    "host_permissions": [ "https://www.coursera.org/*" ],
+    "permissions": [ "storage", "tabs", "activeTab" ]
+}
