@@ -1,0 +1,21 @@
+name: Deployment for Chrome Extension
+
+on: workflow_dispatch
+
+jobs:
+  package:
+    name: Package the extension for deployment
+    runs-on: ubuntu-latest
+    
+    steps:
+      -name: Print packaging
+        run: echo "Chrome extension package"
+        
+      - name: Checkout
+        uses: actions/checkout@v2
+      
+      - name: Zip the contents of the extension
+        run: zip -r chrome-extension-v1.zip . -x ".git/*" ".github/*" ".gitignore"
+        
+      - name: Print release to Github
+        run: echo "Release"
